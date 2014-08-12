@@ -1,0 +1,244 @@
+<html>
+
+<head>
+	<script type="text/javascript" src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+	<script type="text/javascript" src="./canvasjs/canvasjs.min_1.4.1.js"></script>
+	<script type="text/javascript" src="./data/props_1.4.1.js"></script>
+	<link rel="stylesheet" type="text/css" href="./res/style.css">
+	<link rel="stylesheet" type="text/css" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+
+<script>
+
+var chart_server = "http://127.0.0.1:3011/";
+var db = openDatabase('canvasjs_preview', '1.0', 'canvasjs_preview cache db', 2 * 1024 * 1024);
+
+$(document).ready(function() {
+	$("#propertygrid").gride({}, data);
+	refreshChart();
+});
+
+function prepareData() {
+	var req = {};
+
+	for (var i in data) {
+		req[i] = {};
+
+		for (var j in data[i]) {
+			var name = data[i][j].name;
+			var value = data[i][j].value;
+			if (value !== null)
+				req[i][name] = value;
+		}
+	}
+
+	return JSON.stringify(req);
+}
+
+function refreshChart() {
+	var req = prepareData(data);
+
+	$.ajax({
+		type: 'POST',
+		url: chart_server,
+		data: req,
+		dataType : "html",
+		success: function(answer) {
+			var parsed_answer = JSON.parse(answer);
+			new CanvasJS.Chart("lifetime", parsed_answer).render();
+
+			var beauty_json = JSON.stringify(parsed_answer, null, 2);
+			$("#beauty_json").val(beauty_json);
+			console.log(beauty_json);
+		}
+	});
+}
+
+(function($) {
+
+$.fn.extend({
+	gride: function(props, data) {
+		return new gRider(this, props, data);
+	}
+});
+
+var gRider = function(container, props, data) {
+
+	var that = this;
+
+	options = {};
+
+	$.extend(options, props);
+
+	container.addClass("property_container");
+
+	this.renderContainer = function() {
+		container.html('');
+
+		for (var group_name in data) {
+			if (data.hasOwnProperty(group_name)) {
+				container.append("<div class='property_head'>"+group_name+"</div>");
+
+				props_length = data[group_name].length;
+				for (var i=0; i < props_length; i++) {
+					container.append("<div class='property_name'>"+data[group_name][i].name+"</div>");
+					container.append("<div class='property_value'><span>"+data[group_name][i].value+"</span></div>");
+				}
+			}
+		}
+	}
+
+	this.renderContainer();
+
+	container.on("click", ".property_head", function() {
+		$(this).nextUntil(".property_head").toggle();
+		$(this).toggleClass("closed");
+	});
+
+
+	/*
+		editable values
+	*/
+	container.on("click", ".property_value span", function() {
+		var cell = $(this).parent(".property_value");
+
+		var block = that.findBlock(cell);
+
+		if (block === false)
+			return;
+
+		switch (block.type) {
+			case "string":
+			case "number":
+				cell.html("<input type='text' value='"+block.value+"'>");
+				cell.find("input").focus();
+
+				cell.find("input").blur(
+					that.updateData.bind(cell, block.type)
+				);
+				break;
+
+			case "select":
+				cell.html("<select>");
+				for (var i in block.options) {
+					var option = "<option value='"
+						+ block.options[i]
+						+ "'"
+						+ (block.options[i] == block.value?" selected='true' ": "" )
+						+ ">"
+						+ block.options[i]
+						+ "</option>";
+
+					cell.find("select").append(option);
+				}
+
+				cell.find("select").change(
+					that.updateData.bind(cell, block.type)
+				);
+				break;
+
+			case "boolean":
+				cell.html("<select>");
+				cell.find("select").append("<option value='true' "+ (block.value === true?" selected='true' ": "" )+">true</option>");
+				cell.find("select").append("<option value='false' "+ (block.value === false?" selected='true' ": "" )+">false</option>");
+
+				cell.find("select").change(
+					that.updateData.bind(cell, block.type)
+				);
+				break;
+		}
+	});
+
+	this.findBlock = function(obj, newval) {
+		group = obj.prevAll(".property_head").html();
+		name  = obj.prev(".property_name").html();
+
+		if (data.hasOwnProperty(group)) {
+			for (var i in data[group]) {
+				var block = data[group][i];
+				if (typeof block['name'] != 'undefined' && block['name'] == name) {
+					if (typeof newval !== 'undefined')
+						block['value'] = newval;
+
+					return block;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	this.updateData = function(type) {
+		var value, name, group;
+
+		switch (type) {
+			case 'string':
+				value = $(this).find("input").val();
+				break;
+			case 'number':
+				value = $(this).find("input").val();
+				if (value !== "null") {
+					value = parseInt($(this).find("input").val()) || 0;
+				}
+				break;
+			case 'select':
+				value = $(this).find("select").val();
+				break;
+			case 'boolean':
+				value = $(this).find("select").val() == 'true';
+				break;
+		}
+
+		$(this).html("<span>"+value+"</span>");
+
+		if (value === "null")
+			value = null;
+
+		that.findBlock($(this), value);
+
+		refreshChart();
+	}
+}
+
+})(jQuery);
+
+</script>
+</head>
+
+<body>
+
+	<div class="navbar navbar-inverse navbar-relative-top">
+		<div class="navbar-inner">
+			<div class="container" style="margin-left: auto;">
+				<a class="navbar-brand" href="#">CanvasJS preview</a>
+			</div>
+		</div>
+	</div>
+
+	<div class="container-full" style="margin-left: auto;">
+		<div class='col-md-12'>
+			<table style='width: 100%'>
+				<tr>
+					<td valign='top' width="350">
+						<h4>props</h4>
+						<div id="propertygrid"></div>
+					</td>
+					<td valign='top'>
+						<h4>canvas</h4>
+						<div id="lifetime"></div>
+					</td>
+					<td valign='top' width="300">
+						<h4>data preview</h4>
+						<textarea id="beauty_json" class="form-control" rows="20" wrap='off'></textarea>
+					</td>
+				</tr>
+			</table>
+
+		</div>
+	</div>
+
+	<br /><br />
+
+</body>
+
+</html>
+

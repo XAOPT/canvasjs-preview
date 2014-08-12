@@ -1,0 +1,51 @@
+
+.property_container * {
+	font-family: verdana,helvetica,arial,sans-serif;
+	font-size: 9px;
+}
+
+.property_container {
+	border: solid 1px #ccc;
+	width: 310px;
+}
+
+.property_head {
+	border-color: #dddddd;
+	line-height: 20px;
+	font-weight: bold;
+	padding: 0 0 0 28px;
+	cursor: pointer;
+	background: #E0ECFF url(plusminus.png) no-repeat 10px 1px;
+}
+.property_head.closed {
+	background-position: 10px -19px;
+}
+
+.property_name {
+	font-weight: bold;
+	padding: 0 0 0 10px;
+}
+
+.property_name, .property_value {
+	width: 150px;
+	border-color: #ccc;
+	border-width: 0 0 1px 0;
+	border-style: dotted;
+	margin: 0;
+	line-height: 20px;
+	display: inline-block;
+}
+
+.property_value span {
+	display: inline-block;
+	width: 100%;
+	cursor: pointer;
+}
+
+#lifetime {
+	width: 90%;
+}
+
+#beauty_json {
+	font-size: 12px;
+}
