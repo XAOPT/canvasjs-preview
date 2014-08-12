@@ -15,3 +15,9 @@ and open //localhost:3011/
 CanvasJS [license](http://canvasjs.com/license-canvasjs/)
 
 Read more at http://canvasjs.com
+
+###Todo:
+
+* custom data
+* share link
+* area-charts support
